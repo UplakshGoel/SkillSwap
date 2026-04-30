@@ -43,7 +43,7 @@ exports.register = async (req, res) => {
     });
 
   } catch (err) {
-    console.error("REGISTER ERROR:", err);   // 🔥 helpful debug
+    console.error("REGISTER ERROR DETAILS:", err);   // 🔥 detailed debug
     res.status(500).json({ error: err.message });
   } finally {
     await session.close();
@@ -81,7 +81,7 @@ exports.login = async (req, res) => {
     });
 
   } catch (err) {
-    console.error("LOGIN ERROR:", err);   // 🔥 helpful debug
+    console.error("LOGIN ERROR DETAILS:", err);   // 🔥 detailed debug
     res.status(500).json({ error: err.message });
   } finally {
     await session.close();
