@@ -7,11 +7,15 @@
     },
     {
       "source": "/auth/callback",
-      "destination": "/"
+      "destination": "/frontend/index.html"
     },
     {
-      "source": "/((?!api/).*)",
-      "destination": "/"
+      "source": "/((?!api|assets|public|favicon.ico|.*\\.).*)",
+      "destination": "/frontend/index.html"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/frontend/$1"
     }
   ],
   "builds": [
