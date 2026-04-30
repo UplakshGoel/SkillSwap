@@ -30,14 +30,14 @@ function AuthCallback() {
         let payload = {};
 
         if (state === "google") {
-          endpoint = "http://localhost:5000/api/users/google-login";
+          endpoint = "/api/users/google-login";
           payload = { token: idToken };
         } else if (state === "github") {
-          endpoint = "http://localhost:5000/api/users/github-login";
+          endpoint = "/api/users/github-login";
           payload = { code };
         } else if (state === "linkedin") {
-          endpoint = "http://localhost:5000/api/users/linkedin-login";
-          payload = { code, redirectUri: "http://localhost:5173/auth/callback" };
+          endpoint = "/api/users/linkedin-login";
+          payload = { code, redirectUri: `${window.location.origin}/auth/callback` };
         } else {
           throw new Error("Invalid state");
         }

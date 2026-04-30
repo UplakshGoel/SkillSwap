@@ -28,7 +28,7 @@ function ViewProject() {
   const fetchProject = async () => {
     try {
       const res = await axios.get(
-        `http://localhost:5000/api/projects/${id}`
+        `/api/projects/${id}`
       );
       setProject(res.data);
     } catch (err) {
@@ -42,7 +42,7 @@ function ViewProject() {
   const fetchMessages = async () => {
     try {
       const res = await axios.get(
-        `http://localhost:5000/api/projects/messages/${id}`
+        `/api/projects/messages/${id}`
       );
       setMessages(res.data);
     } catch (err) {
@@ -77,7 +77,7 @@ function ViewProject() {
     if (isMember || isFull) return;
 
     try {
-      await axios.post("http://localhost:5000/api/projects/join", {
+      await axios.post("/api/projects/join", {
         email,
         projectId: id,
       });
@@ -91,7 +91,7 @@ function ViewProject() {
   // ================= DELETE =================
   const handleDelete = async () => {
     try {
-      await axios.delete("http://localhost:5000/api/projects/delete", {
+      await axios.delete("/api/projects/delete", {
         data: { email, projectId: id },
       });
 
@@ -106,7 +106,7 @@ function ViewProject() {
     if (!window.confirm("Are you sure you want to leave this project?")) return;
 
     try {
-      await axios.post("http://localhost:5000/api/projects/leave", {
+      await axios.post("/api/projects/leave", {
         email,
         projectId: id,
       });
@@ -129,7 +129,7 @@ function ViewProject() {
     if (!window.confirm(`Remove ${memberName}?`)) return;
 
     try {
-      await axios.post("http://localhost:5000/api/projects/kick", {
+      await axios.post("/api/projects/kick", {
         ownerEmail: email,
         memberName,
         projectId: id,
@@ -151,7 +151,7 @@ function ViewProject() {
     if (!newMessage.trim()) return;
 
     try {
-      await axios.post("http://localhost:5000/api/projects/message", {
+      await axios.post("/api/projects/message", {
         email,
         projectId: id,
         text: newMessage,

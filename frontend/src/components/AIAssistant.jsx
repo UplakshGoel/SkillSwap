@@ -28,7 +28,7 @@ export default function AIAssistant({ project }) {
     setLoading(true);
 
     try {
-      const res = await axios.post("http://localhost:5000/api/ai/assistant", {
+      const res = await axios.post("/api/ai/assistant", {
         question,
         project,
       });

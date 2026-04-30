@@ -27,7 +27,7 @@ function Register() {
 
     try {
       const res = await axios.post(
-        "http://localhost:5000/api/users/register",
+        "/api/users/register",
         { name, email, password }
       );
 
@@ -120,7 +120,7 @@ function Register() {
                 alert("Please add VITE_GOOGLE_CLIENT_ID to .env");
                 return;
               }
-              window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=http://localhost:5173/auth/callback&response_type=id_token&scope=email%20profile&state=google&nonce=random_nonce_value`;
+              window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${window.location.origin}/auth/callback&response_type=id_token&scope=email%20profile&state=google&nonce=random_nonce_value`;
             }}
             className="flex items-center justify-center gap-2 px-6 py-2.5 bg-white text-black font-medium rounded-full hover:bg-gray-100 transition shadow-lg w-full max-w-[240px]"
           >
@@ -138,7 +138,7 @@ function Register() {
                 alert("Please add VITE_GITHUB_CLIENT_ID to .env");
                 return;
               }
-              window.location.href = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=http://localhost:5173/auth/callback&state=github&scope=user:email`;
+              window.location.href = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${window.location.origin}/auth/callback&state=github&scope=user:email`;
             }}
             className="flex items-center justify-center p-3 bg-white/5 border border-white/10 rounded-full hover:bg-white/10 transition"
           >
@@ -151,7 +151,7 @@ function Register() {
                 alert("Please add VITE_LINKEDIN_CLIENT_ID to .env");
                 return;
               }
-              window.location.href = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${clientId}&redirect_uri=http://localhost:5173/auth/callback&state=linkedin&scope=openid%20profile%20email`;
+              window.location.href = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${clientId}&redirect_uri=${window.location.origin}/auth/callback&state=linkedin&scope=openid%20profile%20email`;
             }}
             className="flex items-center justify-center p-3 bg-white/5 border border-white/10 rounded-full hover:bg-[#0a66c2]/80 transition"
           >

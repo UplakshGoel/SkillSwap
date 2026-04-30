@@ -48,7 +48,7 @@ function CreateProject() {
 
     try {
       const res = await axios.post(
-        "http://localhost:5000/api/ai/generate-description",
+        "/api/ai/generate-description",
         {
           title,
           skills: selectedSkills.join(", "),
@@ -72,7 +72,7 @@ function CreateProject() {
     }
 
     try {
-      await axios.post("http://localhost:5000/api/projects/create", {
+      await axios.post("/api/projects/create", {
         email,
         title,
         description,

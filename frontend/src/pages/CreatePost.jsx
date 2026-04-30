@@ -15,7 +15,7 @@ function CreatePost() {
     const fetchProject = async () => {
       try {
         const res = await axios.get(
-          `http://localhost:5000/api/projects/${id}`
+          `/api/projects/${id}`
         );
         setProject(res.data);
       } catch (err) {
@@ -33,7 +33,7 @@ function CreatePost() {
     }
 
     try {
-      await axios.post("http://localhost:5000/api/projects/post", {
+      await axios.post("/api/projects/post", {
         email,
         projectId: id,
         content

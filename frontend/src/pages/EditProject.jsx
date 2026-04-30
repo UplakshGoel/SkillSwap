@@ -30,7 +30,7 @@ function EditProject() {
   useEffect(() => {
     const fetchProject = async () => {
       try {
-        const res = await axios.get("http://localhost:5000/api/projects");
+        const res = await axios.get("/api/projects");
 
         const project = res.data.find(p => p.id == id);
 
@@ -75,7 +75,7 @@ function EditProject() {
 
     try {
       const res = await axios.post(
-        "http://localhost:5000/api/ai/generate-description",
+        "/api/ai/generate-description",
         {
           title,
           skills: selectedSkills.join(", "),
@@ -92,7 +92,7 @@ function EditProject() {
 
   const handleUpdate = async () => {
     try {
-      await axios.put("http://localhost:5000/api/projects/update", {
+      await axios.put("/api/projects/update", {
         email,
         projectId: id,
         title,

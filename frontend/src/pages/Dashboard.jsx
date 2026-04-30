@@ -26,20 +26,20 @@ function Dashboard() {
     const fetchData = async () => {
       try {
         const profileRes = await axios.get(
-          `http://localhost:5000/api/profile/${email}`
+          `/api/profile/${email}`
         );
 
         setSkills(profileRes.data.skills || []);
         setInterests(profileRes.data.interests || []);
 
         const projectRes = await axios.get(
-          `http://localhost:5000/api/projects/recommend/${email}`
+          `/api/projects/recommend/${email}`
         );
 
         setProjects(projectRes.data);
 
         const allRes = await axios.get(
-          `http://localhost:5000/api/projects`
+          `/api/projects`
         );
 
         setAllProjects(allRes.data);

@@ -26,7 +26,7 @@ function Profile() {
     const fetchProfile = async () => {
       try {
         const res = await axios.get(
-          `http://localhost:5000/api/profile/${email}`
+          `/api/profile/${email}`
         );
 
         setName(res.data.user.name || "");

@@ -15,14 +15,14 @@ function Notifications() {
 
   const fetchNotifications = async () => {
     const res = await axios.get(
-      `http://localhost:5000/api/projects/notifications/${email}`
+      `/api/projects/notifications/${email}`
     );
     setNotifications(res.data);
   };
 
   const handleRead = async (id) => {
     await axios.post(
-      "http://localhost:5000/api/projects/notifications/read-one",
+      "/api/projects/notifications/read-one",
       { id }
     );
 
@@ -35,7 +35,7 @@ function Notifications() {
 
   const handleDelete = async (id) => {
     await axios.post(
-      "http://localhost:5000/api/projects/notifications/delete",
+      "/api/projects/notifications/delete",
       { id }
     );
 
@@ -49,7 +49,7 @@ function Notifications() {
       notifications.map((n) =>
         !n.read
           ? axios.post(
-              "http://localhost:5000/api/projects/notifications/read-one",
+              "/api/projects/notifications/read-one",
               { id: n.id }
             )
           : null
@@ -65,7 +65,7 @@ function Notifications() {
     await Promise.all(
       notifications.map((n) =>
         axios.post(
-          "http://localhost:5000/api/projects/notifications/delete",
+          "/api/projects/notifications/delete",
           { id: n.id }
         )
       )

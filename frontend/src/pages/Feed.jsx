@@ -24,7 +24,7 @@ function Feed() {
   const fetchFeed = async () => {
     try {
       const res = await axios.get(
-        "http://localhost:5000/api/projects/feed"
+        "/api/projects/feed"
       );
       setPosts(res.data);
       setFilteredPosts(res.data);
@@ -55,7 +55,7 @@ function Feed() {
 
   const handleLike = async (postId) => {
     try {
-      await axios.post("http://localhost:5000/api/projects/like", {
+      await axios.post("/api/projects/like", {
         email,
         name,
         postId
@@ -71,7 +71,7 @@ function Feed() {
     if (!text || !text.trim()) return;
 
     try {
-      await axios.post("http://localhost:5000/api/projects/comment", {
+      await axios.post("/api/projects/comment", {
         email,
         name,
         postId,

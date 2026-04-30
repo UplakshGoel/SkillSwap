@@ -31,7 +31,7 @@ function EditProfile() {
     const fetchProfile = async () => {
       try {
         const res = await axios.get(
-          `http://localhost:5000/api/profile/${email}`
+          `/api/profile/${email}`
         );
 
         setSelectedSkills(res.data.skills || []);
@@ -67,7 +67,7 @@ function EditProfile() {
 
   const handleSave = async () => {
     try {
-      await axios.put("http://localhost:5000/api/profile/update", {
+      await axios.put("/api/profile/update", {
         email,
         skills: selectedSkills.join(","),
         interests: selectedInterests.join(","),

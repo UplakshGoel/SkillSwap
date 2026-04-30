@@ -24,7 +24,7 @@ function Projects() {
     const fetchProjects = async () => {
       try {
         const res = await axios.get(
-          `http://localhost:5000/api/projects/my/${email}`
+          `/api/projects/my/${email}`
         );
 
         setCreated(res.data.createdProjects || []);
