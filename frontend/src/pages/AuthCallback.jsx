@@ -60,10 +60,18 @@ function AuthCallback() {
   }, [location, navigate]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#020617] text-white">
-      <div className="flex flex-col items-center">
-        <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p className="text-gray-400">Authenticating...</p>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#020617] via-[#020617] to-black text-white relative overflow-hidden">
+      
+      {/* Glow effect */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-indigo-500/20 blur-[100px] rounded-full"></div>
+
+      <div className="flex flex-col items-center relative z-10 scale-in">
+        <div className="relative">
+          <div className="w-16 h-16 border-4 border-indigo-500/20 rounded-full"></div>
+          <div className="w-16 h-16 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin absolute top-0 left-0"></div>
+        </div>
+        <h2 className="text-2xl font-bold mt-8 tracking-tight">Authenticating</h2>
+        <p className="text-gray-500 text-sm mt-2 font-medium">Connecting your secure session...</p>
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { useNavigate } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { motion, Reorder } from "framer-motion";
 import AIAssistant from "../components/AIAssistant";
 
@@ -11,22 +11,26 @@ import {
 } from "@heroicons/react/24/outline";
 
 function Profile() {
+  const { email: paramEmail } = useParams();
+  const navigate = useNavigate();
+
   const [name, setName] = useState("");
   const [skills, setSkills] = useState([]);
   const [interests, setInterests] = useState([]);
   const [bio, setBio] = useState("");
   const [organization, setOrganization] = useState("");
 
-  const navigate = useNavigate();
+  const myEmail = localStorage.getItem("email");
+  const targetEmail = paramEmail || myEmail;
+  const isOwnProfile = !paramEmail || paramEmail === myEmail;
 
   useEffect(() => {
-    const email = localStorage.getItem("email");
-    if (!email) return;
+    if (!targetEmail) return;
 
     const fetchProfile = async () => {
       try {
         const res = await axios.get(
-          `/api/profile/${email}`
+          `/api/profile/${targetEmail}`
         );
 
         setName(res.data.user.name || "");
@@ -40,7 +44,7 @@ function Profile() {
     };
 
     fetchProfile();
-  }, []);
+  }, [targetEmail]);
 
   const handleLogout = () => {
     localStorage.removeItem("email");
@@ -48,152 +52,138 @@ function Profile() {
   };
 
   return (
-    <div className="min-h-screen flex justify-center px-6 py-16 bg-gradient-to-br from-[#020617] via-[#020617] to-black text-white relative overflow-hidden">
+    <div className="min-h-screen px-4 sm:px-6 py-10 bg-[#020617] text-white pt-24 pb-20 relative overflow-hidden">
+      
+      {/* Background elements */}
+      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+        <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-500/5 blur-[120px] rounded-full" />
+        <div className="absolute bottom-[-10%] left-[-10%] w-[40%] h-[40%] bg-purple-500/5 blur-[120px] rounded-full" />
+      </div>
 
-      {/* Background Glow */}
-      <div className="absolute top-[-100px] left-[-100px] w-[300px] h-[300px] bg-indigo-500/20 blur-[120px] rounded-full animate-pulse" />
-      <div className="absolute bottom-[-120px] right-[-100px] w-[300px] h-[300px] bg-purple-500/20 blur-[120px] rounded-full animate-pulse" />
+      <div className="max-w-3xl mx-auto relative z-10 space-y-6">
+        
+        {/* BACK BUTTON */}
+        <button
+          onClick={() => navigate(-1)}
+          className="group flex items-center gap-3 px-5 py-2.5 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 transition-all duration-300 shadow-xl"
+        >
+          <svg className="w-5 h-5 group-hover:-translate-x-1 transition-transform text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+          </svg>
+          <span className="text-sm font-bold uppercase tracking-widest">Go Back</span>
+        </button>
 
-      {/* Card */}
-      <motion.div
-        initial={{ opacity: 0, y: 40, scale: 0.98 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.6 }}
-        className="relative w-full max-w-2xl p-10 rounded-3xl border border-white/10 bg-white/5 backdrop-blur-2xl shadow-[0_10px_60px_rgba(0,0,0,0.6)]"
-      >
+        <motion.div
+          initial={{ opacity: 0, y: 20, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.6 }}
+          className="relative w-full p-8 sm:p-12 rounded-[3rem] border border-white/10 bg-white/5 backdrop-blur-2xl shadow-2xl overflow-hidden"
+        >
+          <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 rounded-full -mr-32 -mt-32 blur-[80px]"></div>
 
-        {/* Header */}
-        <div className="flex flex-col items-center text-center mb-10">
+          <div className="relative z-10">
+            {/* Header */}
+            <div className="flex flex-col items-center text-center mb-10">
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", stiffness: 120 }}
+                className="relative group mb-6"
+              >
+                <div className="p-6 rounded-full bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-white/10 relative overflow-hidden">
+                  <div className="absolute inset-0 bg-indigo-500/10 blur-xl opacity-0 group-hover:opacity-100 transition duration-500"></div>
+                  <UserCircleIcon className="w-16 h-16 sm:w-20 sm:h-20 text-indigo-400 relative z-10" />
+                </div>
+              </motion.div>
 
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ type: "spring", stiffness: 120 }}
-            className="relative group"
-          >
-            <div className="p-5 rounded-full bg-gradient-to-br from-indigo-500/30 to-purple-500/30 border border-white/10">
-              <UserCircleIcon className="w-16 h-16 text-indigo-300" />
+              <h1 className="text-3xl sm:text-4xl font-bold mb-2 tracking-tight">
+                {name || "User Profile"}
+              </h1>
+
+              {organization && (
+                <p className="text-indigo-400 font-semibold tracking-wider uppercase text-xs">{organization}</p>
+              )}
+
+              {bio && (
+                <p className="text-gray-400 mt-6 max-w-md leading-relaxed text-sm sm:text-base italic">
+                  "{bio}"
+                </p>
+              )}
             </div>
-          </motion.div>
 
-          <motion.h1
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="text-3xl font-semibold mt-4"
-          >
-            {name || "Your Name"}
-          </motion.h1>
+            <div className="h-px bg-white/5 mb-10 w-full" />
 
-          {organization && (
-            <p className="text-sm text-indigo-300 mt-1">{organization}</p>
-          )}
+            <div className="space-y-12">
+              {/* SKILLS */}
+              <div>
+                <div className="flex items-center gap-2 mb-6">
+                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">Skills & Expertise</span>
+                  <div className="h-px flex-1 bg-white/10"></div>
+                </div>
 
-          {bio && (
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.3 }}
-              className="text-sm text-gray-400 mt-4 max-w-lg"
-            >
-              {bio}
-            </motion.p>
-          )}
-        </div>
+                {skills.length === 0 ? (
+                  <p className="text-gray-600 text-xs italic text-center py-4 bg-white/[0.02] rounded-2xl">No skills shared yet</p>
+                ) : (
+                  <div className="flex flex-wrap gap-3">
+                    {skills.map((skill) => (
+                      <div
+                        key={skill}
+                        className="px-5 py-2 text-xs font-bold rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 hover:bg-indigo-500/20 transition-all cursor-default"
+                      >
+                        {skill}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
 
-        <div className="h-px bg-white/10 mb-8" />
+              {/* INTERESTS */}
+              <div>
+                <div className="flex items-center gap-2 mb-6">
+                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">Areas of Interest</span>
+                  <div className="h-px flex-1 bg-white/10"></div>
+                </div>
 
-        <div className="flex flex-col gap-8">
+                {interests.length === 0 ? (
+                  <p className="text-gray-600 text-xs italic text-center py-4 bg-white/[0.02] rounded-2xl">No interests shared yet</p>
+                ) : (
+                  <div className="flex flex-wrap gap-3">
+                    {interests.map((interest) => (
+                      <div
+                        key={interest}
+                        className="px-5 py-2 text-xs font-bold rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-300 hover:bg-purple-500/20 transition-all cursor-default"
+                      >
+                        {interest}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
 
-          {/* SKILLS */}
-          <div>
-            <label className="text-xs uppercase tracking-widest text-gray-500">
-              Skills (Drag to reorder)
-            </label>
+              {/* ACTIONS */}
+              {isOwnProfile && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
+                  <button
+                    onClick={() => navigate("/edit-profile")}
+                    className="flex items-center justify-center gap-3 px-8 py-3.5 bg-indigo-600 text-white text-xs font-bold uppercase tracking-[0.2em] rounded-2xl hover:bg-indigo-500 transition-all shadow-xl shadow-indigo-600/20 active:scale-95"
+                  >
+                    <PencilSquareIcon className="w-5 h-5" />
+                    Edit Profile
+                  </button>
 
-            <Reorder.Group
-              axis="x"
-              values={skills}
-              onReorder={setSkills}
-              className="flex flex-wrap gap-3 mt-4"
-            >
-              {skills.map((skill) => (
-                <Reorder.Item
-                  key={skill}
-                  value={skill}
-                  whileDrag={{ scale: 1.15 }}
-                  className="px-4 py-2 text-sm rounded-xl bg-indigo-500/20 border border-indigo-400/30 text-indigo-200 cursor-grab active:cursor-grabbing"
-                >
-                  {skill}
-                </Reorder.Item>
-              ))}
-            </Reorder.Group>
-
-            {skills.length === 0 && (
-              <p className="text-gray-500 text-xs italic mt-2">
-                No skills added yet
-              </p>
-            )}
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center justify-center gap-3 px-8 py-3.5 bg-white/5 border border-white/10 text-red-400 text-xs font-bold uppercase tracking-[0.2em] rounded-2xl hover:bg-red-500/10 hover:border-red-500/30 transition-all active:scale-95"
+                  >
+                    <ArrowRightOnRectangleIcon className="w-5 h-5" />
+                    Logout
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
-
-          {/* INTERESTS */}
-          <div>
-            <label className="text-xs uppercase tracking-widest text-gray-500">
-              Interests (Drag to reorder)
-            </label>
-
-            <Reorder.Group
-              axis="x"
-              values={interests}
-              onReorder={setInterests}
-              className="flex flex-wrap gap-3 mt-4"
-            >
-              {interests.map((interest) => (
-                <Reorder.Item
-                  key={interest}
-                  value={interest}
-                  whileDrag={{ scale: 1.15 }}
-                  className="px-4 py-2 text-sm rounded-xl bg-purple-500/20 border border-purple-400/30 text-purple-200 cursor-grab active:cursor-grabbing"
-                >
-                  {interest}
-                </Reorder.Item>
-              ))}
-            </Reorder.Group>
-
-            {interests.length === 0 && (
-              <p className="text-gray-500 text-xs italic mt-2">
-                No interests added yet
-              </p>
-            )}
-          </div>
-
-          {/* BUTTONS */}
-          <div className="flex flex-col sm:flex-row gap-4 pt-6">
-
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => navigate("/edit-profile")}
-              className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 font-medium"
-            >
-              <PencilSquareIcon className="w-5 h-5" />
-              Edit Profile
-            </motion.button>
-
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={handleLogout}
-              className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border border-red-400/30 text-red-400 hover:bg-red-500/20"
-            >
-              <ArrowRightOnRectangleIcon className="w-5 h-5" />
-              Logout
-            </motion.button>
-
-          </div>
-        </div>
-      </motion.div>
-
+        </motion.div>
+      </div>
       <AIAssistant />
     </div>
   );

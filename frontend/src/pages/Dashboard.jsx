@@ -68,28 +68,29 @@ function Dashboard() {
     skills.length < 2 || interests.length < 2;
 
   return (
-    <div>
+    <div className="pt-20"> {/* Fixed Navbar Offset */}
     <motion.div
-      className="min-h-screen px-6 md:px-16 py-10 bg-gradient-to-br from-[#020617] via-[#020617] to-black text-white overflow-hidden"
+      className="min-h-screen px-4 sm:px-6 md:px-16 py-6 md:py-10 bg-gradient-to-br from-[#020617] via-[#020617] to-black text-white overflow-hidden"
       initial={{ opacity: 0, y: 30 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.6 }}
     >
 
       <div className="max-w-7xl mx-auto">
-        <br /><br />
-
+        
         {/* PROFILE BANNER */}
         {isProfileIncomplete && (
-          <div className="mb-8 p-5 rounded-xl bg-yellow-500/10 border border-yellow-400/20 flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="mb-8 p-4 sm:p-5 rounded-2xl bg-yellow-500/10 border border-yellow-400/20 flex flex-col md:flex-row items-center justify-between gap-4 backdrop-blur-md">
 
-            <div className="flex items-center gap-3">
-              <UserCircleIcon className="w-8 h-8 text-yellow-400" />
+            <div className="flex items-center gap-3 sm:gap-4">
+              <div className="p-2 bg-yellow-500/20 rounded-lg">
+                <UserCircleIcon className="w-6 h-6 sm:w-8 sm:h-8 text-yellow-400" />
+              </div>
               <div>
-                <p className="text-yellow-300 font-semibold">
+                <p className="text-yellow-300 font-semibold text-sm sm:text-base">
                   Complete your profile
                 </p>
-                <p className="text-gray-400 text-sm">
+                <p className="text-gray-400 text-xs sm:text-sm">
                   Add skills & interests to unlock recommendations
                 </p>
               </div>
@@ -97,7 +98,7 @@ function Dashboard() {
 
             <button
               onClick={() => navigate("/profile")}
-              className="btn-primary"
+              className="btn-primary w-full md:w-auto text-sm"
             >
               Go to Profile
             </button>
@@ -106,48 +107,48 @@ function Dashboard() {
         )}
 
         {/* STATS */}
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-6 mb-10">
-          <div className="glass p-5 text-center">
-            <p className="text-2xl font-bold">{projects.length}</p>
-            <p className="text-gray-400 text-sm">Recommendations</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 md:gap-6 mb-10">
+          <div className="glass p-5 flex flex-col items-center justify-center">
+            <p className="text-3xl font-bold text-indigo-400">{projects.length}</p>
+            <p className="text-gray-400 text-xs uppercase tracking-wider mt-1">Recommendations</p>
           </div>
 
-          <div className="glass p-5 text-center">
-            <p className="text-2xl font-bold">{skills.length}</p>
-            <p className="text-gray-400 text-sm">Your Skills</p>
+          <div className="glass p-5 flex flex-col items-center justify-center">
+            <p className="text-3xl font-bold text-purple-400">{skills.length}</p>
+            <p className="text-gray-400 text-xs uppercase tracking-wider mt-1">Your Skills</p>
           </div>
 
-          <div className="glass p-5 text-center">
-            <p className="text-2xl font-bold">{interests.length}</p>
-            <p className="text-gray-400 text-sm">Interests</p>
+          <div className="glass p-5 flex flex-col items-center justify-center sm:col-span-2 md:col-span-1">
+            <p className="text-3xl font-bold text-pink-400">{interests.length}</p>
+            <p className="text-gray-400 text-xs uppercase tracking-wider mt-1">Interests</p>
           </div>
         </div>
 
         {/* HEADER */}
-        <div className="flex items-center gap-3 mb-8">
-          <SparklesIcon className="w-7 h-7 text-indigo-400" />
-          <h1 className="text-3xl font-bold">
+        <div className="flex items-center gap-3 mb-6 md:mb-8">
+          <SparklesIcon className="w-6 h-6 md:w-7 md:h-7 text-indigo-400" />
+          <h1 className="text-2xl md:text-3xl font-bold">
             Recommended Projects
           </h1>
         </div>
 
         {/* RECOMMENDED */}
         {projects.length === 0 ? (
-          <div className="glass p-8 text-center">
-            <p className="text-gray-400 mb-2">
+          <div className="glass p-10 text-center border-dashed">
+            <p className="text-gray-400 mb-2 font-medium">
               No recommendations yet
             </p>
-            <p className="text-sm text-gray-500">
-              Add more skills to improve feed
+            <p className="text-xs text-gray-500">
+              Add more skills to your profile to improve your feed
             </p>
           </div>
         ) : (
-          <div className="overflow-hidden py-6 mb-16">
+          <div className="overflow-hidden py-4 md:py-6 mb-12 md:mb-16">
             <div className="carousel">
               {[...projects, ...projects, ...projects, ...projects].map((p, i) => (
                 <div
                   key={i}
-                  className="min-w-[300px] max-w-[300px] flex-shrink-0 transition-transform duration-300 hover:scale-[1.03]"
+                  className="min-w-[280px] sm:min-w-[320px] flex-shrink-0 transition-transform duration-300 hover:scale-[1.03]"
                 >
                   <ProjectCard project={p} />
                 </div>
@@ -157,15 +158,13 @@ function Dashboard() {
         )}
 
         {/* 🚀 EXPLORE MORE */}
-        <div className="mt-10">
-          <h2 className="text-xl font-semibold mb-6 text-gray-300">
+        <div className="mt-8 md:mt-10">
+          <h2 className="text-lg md:text-xl font-semibold mb-6 text-gray-300 border-l-4 border-indigo-500 pl-4">
             Explore More Projects
           </h2>
 
           <div className="overflow-hidden py-4">
-            
             <Carousel allProjects={allProjects} />
-
           </div>
         </div>
 

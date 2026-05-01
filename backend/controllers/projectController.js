@@ -16,18 +16,23 @@ function getMaxMembers(teamSize) {
 }
 
 
-async function createNotification(session, email, text) {
+async function createNotification(session, email, text, metadata = {}) {
+  const { type = "info", requesterEmail = null, projectId = null } = metadata;
+  
   await session.run(
     `
     MATCH (u:User {email: $email})
-    CREATE (n:Notification {
+    MERGE (u)-[:HAS_NOTIFICATION]->(n:Notification {
       text: $text,
-      createdAt: timestamp(),
-      read: false
+      type: $type,
+      requesterEmail: coalesce($requesterEmail, ""),
+      projectId: coalesce(toInteger($projectId), -1)
     })
-    MERGE (u)-[:HAS_NOTIFICATION]->(n)
+    ON CREATE SET 
+      n.createdAt = timestamp(),
+      n.read = false
     `,
-    { email, text }
+    { email, text, type, requesterEmail, projectId }
   );
 }
 
@@ -51,13 +56,17 @@ exports.createProject = async (req, res) => {
     const createRes = await session.run(
       `
       MATCH (u:User {email: $email})
-      CREATE (p:Project {
+      MERGE (p:Project {
         title: $title,
-        description: $description,
-        owner: $email,
-        teamSize: $maxMembers
+        owner: $email
       })
+      ON CREATE SET 
+        p.description = $description,
+        p.teamSize = $maxMembers,
+        p.createdAt = timestamp()
+      
       MERGE (u)-[:CREATED]->(p)
+      MERGE (u)-[:JOINED]->(p)
       RETURN p
       `,
       { email, title, description, maxMembers }
@@ -102,7 +111,7 @@ exports.getProjects = async (req, res) => {
       `
       MATCH (p:Project)
       OPTIONAL MATCH (p)-[:REQUIRES]->(s:Skill)
-      RETURN p, collect(s.name) AS skills
+      RETURN p, collect(DISTINCT s.name) AS skills
       `
     );
 
@@ -245,7 +254,7 @@ exports.getRecommendedProjects = async (req, res) => {
 
       OPTIONAL MATCH (proj)-[:REQUIRES]->(sk:Skill)
 
-      WITH proj, collect(sk.name) AS skills
+      WITH proj, collect(DISTINCT sk.name) AS skills
 
       RETURN DISTINCT proj, skills
       `
@@ -276,63 +285,86 @@ exports.joinProject = async (req, res) => {
   const { email, projectId } = req.body;
 
   try {
-    // Get project + members
+    // 1. Get project + members + check if already requested
     const result = await session.run(
       `
       MATCH (p:Project)
       WHERE id(p) = toInteger($projectId)
 
-      OPTIONAL MATCH (u:User)-[:JOINED]->(p)
+      OPTIONAL MATCH (u:User)-[r:JOINED]->(p)
+      WHERE NOT (u)-[:CREATED]->(p)
+      OPTIONAL MATCH (requester:User {email: $email})
 
-      RETURN p, collect(u) AS members
+      RETURN p, 
+             collect(DISTINCT u.email) AS memberEmails,
+             p.owner AS ownerEmail,
+             p.title AS title,
+             requester.name AS requesterName
       `,
-      { projectId }
+      { projectId, email }
     );
+
+    if (result.records.length === 0) return res.status(404).json({ message: "Project not found" });
 
     const record = result.records[0];
     const project = record.get("p").properties;
-    const members = record.get("members");
+    const memberEmails = record.get("memberEmails");
+    const ownerEmail = record.get("ownerEmail");
+    const projectTitle = record.get("title");
+    const requesterName = record.get("requesterName");
 
-    const maxMembers = project.teamSize;
-    const currentMembers = members.length;
+    if (memberEmails.includes(email) || ownerEmail === email) {
+      return res.status(400).json({ message: "You are already part of this project" });
+    }
 
-    // 🔥 Check limit
-    if (currentMembers >= maxMembers) {
+    if (memberEmails.length >= project.teamSize) {
       return res.status(400).json({ message: "Project is full" });
     }
 
-    // Add user
-    await session.run(
+    if (!requesterName) {
+      return res.status(400).json({ message: "User profile not found. Please complete your profile." });
+    }
+
+    // 2. Check if notification already exists (to avoid spam)
+    const existingReq = await session.run(
       `
-      MATCH (u:User {email: $email})
-      MATCH (p:Project)
-      WHERE id(p) = toInteger($projectId)
-      MERGE (u)-[:JOINED]->(p)
+      MATCH (owner:User {email: $ownerEmail})-[:HAS_NOTIFICATION]->(n:Notification {
+        type: "join_request", 
+        requesterEmail: $email, 
+        projectId: toInteger($projectId)
+      })
+      RETURN n
       `,
-      { email, projectId }
-    );
-    
-    const projectRes = await session.run(
-      `
-      MATCH (p:Project)
-      WHERE id(p) = toInteger($projectId)
-      RETURN p.title AS title
-      `,
-      { projectId }
+      { ownerEmail, email, projectId }
     );
 
-    const projectTitle = projectRes.records[0].get("title");
+    if (existingReq.records.length > 0) {
+      return res.json({ message: "Your request is already pending approval" });
+    }
 
+    // 3. Notify Owner
+    await createNotification(
+      session,
+      ownerEmail,
+      `${requesterName} wants to join your project "${projectTitle}"`,
+      {
+        type: "join_request",
+        requesterEmail: email,
+        projectId: Number(projectId)
+      }
+    );
+
+    // 4. Notify Requester
     await createNotification(
       session,
       email,
-      `You joined "${projectTitle}"`
+      `Request sent for "${projectTitle}". Awaiting owner approval.`
     );
 
-    res.json({ message: "Joined project" });
+    res.json({ message: "Join request sent to owner" });
 
   } catch (err) {
-    console.error("JOIN ERROR:", err);
+    console.error("JOIN REQUEST ERROR:", err);
     res.status(500).json({ error: err.message });
   } finally {
     await session.close();
@@ -353,6 +385,7 @@ exports.getProjectById = async (req, res) => {
 
       OPTIONAL MATCH (p)-[:REQUIRES]->(s:Skill)
       OPTIONAL MATCH (u:User)-[:JOINED]->(p)
+      WHERE NOT (u)-[:CREATED]->(p)
       OPTIONAL MATCH (creator:User)-[:CREATED]->(p)
 
       WITH p,
@@ -410,7 +443,7 @@ exports.getMyProjects = async (req, res) => {
       `
       MATCH (u:User {email: $email})-[:CREATED]->(p:Project)
       OPTIONAL MATCH (p)-[:REQUIRES]->(s:Skill)
-      RETURN p, collect(s.name) AS skills
+      RETURN p, collect(DISTINCT s.name) AS skills
       `,
       { email }
     );
@@ -418,8 +451,9 @@ exports.getMyProjects = async (req, res) => {
     const joinedResult = await session.run(
       `
       MATCH (u:User {email: $email})-[:JOINED]->(p:Project)
+      WHERE NOT p.owner = $email
       OPTIONAL MATCH (p)-[:REQUIRES]->(s:Skill)
-      RETURN p, collect(s.name) AS skills
+      RETURN p, collect(DISTINCT s.name) AS skills
       `,
       { email }
     );
@@ -458,7 +492,7 @@ exports.getAllProjects = async (req, res) => {
     const result = await session.run(`
       MATCH (p:Project)
       OPTIONAL MATCH (p)-[:REQUIRES]->(s:Skill)
-      WITH p, collect(s.name) AS skills
+      WITH p, collect(DISTINCT s.name) AS skills
       RETURN p, skills
     `);
 
@@ -546,7 +580,8 @@ exports.kickMember = async (req, res) => {
     await createNotification(
       session,
       memberEmail,
-      `You were removed from "${projectTitle}"`
+      `You were removed from "${projectTitle}"`,
+      { projectId: Number(projectId) }
     );
 
     res.json({ message: "Member removed" });
@@ -699,7 +734,8 @@ exports.leaveProject = async (req, res) => {
     await createNotification(
       session,
       email,
-      `You left "${projectTitle}"`
+      `You left "${projectTitle}"`,
+      { projectId: Number(projectId) }
     );
 
     res.json({ message: "Left project" });
@@ -713,6 +749,95 @@ exports.leaveProject = async (req, res) => {
 };
 
 
+
+exports.handleJoinRequest = async (req, res) => {
+  const session = driver.session();
+  const { action, notificationId, requesterEmail, projectId, ownerEmail } = req.body;
+  const pId = Number(projectId);
+  const nId = Number(notificationId);
+
+  try {
+    if (action === "approve") {
+      // 0. Double check if project is full
+      const capacityRes = await session.run(
+        `
+        MATCH (p:Project)
+        WHERE id(p) = toInteger($pId)
+        OPTIONAL MATCH (m:User)-[:JOINED]->(p)
+        WHERE NOT (m)-[:CREATED]->(p)
+        RETURN p.teamSize AS teamSize, count(m) AS currentMembers
+        `,
+        { pId }
+      );
+
+      if (capacityRes.records.length === 0) {
+        return res.status(404).json({ message: "Project not found" });
+      }
+
+      const record = capacityRes.records[0];
+      const rawTeamSize = record.get("teamSize");
+      const rawCurrentMembers = record.get("currentMembers");
+
+      const teamSize = (rawTeamSize && rawTeamSize.toNumber) ? rawTeamSize.toNumber() : (Number(rawTeamSize) || 0);
+      const currentMembers = (rawCurrentMembers && rawCurrentMembers.toNumber) ? rawCurrentMembers.toNumber() : (Number(rawCurrentMembers) || 0);
+
+      if (currentMembers >= teamSize) {
+        return res.status(400).json({ message: "Project is full" });
+      }
+
+      // 1. Join user to project
+      await session.run(
+        `
+        MATCH (u:User {email: $requesterEmail})
+        MATCH (p:Project)
+        WHERE id(p) = toInteger($pId)
+        MERGE (u)-[:JOINED]->(p)
+        `,
+        { requesterEmail, pId }
+      );
+
+      // 2. Notify requester
+      const projectRes = await session.run(
+        `MATCH (p:Project) WHERE id(p) = toInteger($pId) RETURN p.title AS title`,
+        { pId }
+      );
+      const projectTitle = projectRes.records[0]?.get("title") || "the project";
+
+      await createNotification(
+        session,
+        requesterEmail,
+        `Congratulations! Your request to join "${projectTitle}" has been approved.`,
+        { type: "approval", projectId: pId }
+      );
+    } else {
+       // Notify requester of rejection (optional but polite)
+       await createNotification(
+        session,
+        requesterEmail,
+        `Your request to join the project has been declined.`,
+        { type: "rejection", projectId: pId }
+      );
+    }
+
+    // 3. Delete the join request notification
+    await session.run(
+      `
+      MATCH (n:Notification)
+      WHERE id(n) = toInteger($nId)
+      DETACH DELETE n
+      `,
+      { nId }
+    );
+
+    res.json({ message: `Request ${action}d successfully` });
+
+  } catch (err) {
+    console.error("HANDLE JOIN REQUEST ERROR:", err);
+    res.status(500).json({ error: err.message });
+  } finally {
+    await session.close();
+  }
+};
 
 exports.getNotifications = async (req, res) => {
   const session = driver.session();
@@ -730,12 +855,21 @@ exports.getNotifications = async (req, res) => {
 
     const notifications = result.records.map(r => {
       const n = r.get("n");
+      const props = n.properties;
+
+      const toJSNumber = (val) => {
+        if (val === null || val === undefined) return null;
+        return (val.toNumber) ? val.toNumber() : Number(val);
+      };
 
       return {
-        id: n.identity.toNumber(),   // 🔥 IMPORTANT
-        text: n.properties.text,
-        createdAt: n.properties.createdAt,
-        read: n.properties.read
+        id: n.identity.toNumber(),
+        text: props.text,
+        type: props.type || "info",
+        requesterEmail: props.requesterEmail,
+        projectId: toJSNumber(props.projectId),
+        createdAt: toJSNumber(props.createdAt),
+        read: props.read
       };
     });
 
@@ -849,24 +983,30 @@ exports.createPost = async (req, res) => {
     const skills = (record.get("skills") || []).filter(Boolean);
     const members = (record.get("members") || []).filter(Boolean);
 
-    // 🔥 Create post with full snapshot
+    // 🔥 Create post with full snapshot (MERGE to prevent double-submit)
     await session.run(
       `
       MATCH (u:User {email: $email})
+      MATCH (proj:Project)
+      WHERE id(proj) = toInteger($projectId)
 
-      CREATE (post:Post {
+      MERGE (post:Post {
         content: $content,
-        title: $title,
-        description: $description,
-        skills: $skills,
-        members: $members,
-        createdAt: timestamp()
+        owner: $email,
+        title: $title
       })
+      ON CREATE SET
+        post.description = $description,
+        post.skills = $skills,
+        post.members = $members,
+        post.createdAt = timestamp()
 
       MERGE (u)-[:POSTED]->(post)
+      MERGE (post)-[:FROM_PROJECT]->(proj)
       `,
       {
         email,
+        projectId,
         content,
         title: p.title,
         description: p.description,
@@ -938,17 +1078,19 @@ exports.toggleLike = async (req, res) => {
   const { email, postId } = req.body;
 
   try {
-    // 🔥 Get post owner
+    // 🔥 Get post owner & project ID
     const ownerRes = await session.run(
       `
       MATCH (owner:User)-[:POSTED]->(p:Post)
       WHERE id(p) = toInteger($postId)
-      RETURN owner.email AS ownerEmail, owner.name AS ownerName
+      OPTIONAL MATCH (p)-[:FROM_PROJECT]->(proj:Project)
+      RETURN owner.email AS ownerEmail, id(proj) AS projId
       `,
       { postId }
     );
 
     const ownerEmail = ownerRes.records[0]?.get("ownerEmail");
+    const projId = ownerRes.records[0]?.get("projId");
 
     // 🔥 Check if already liked
     const check = await session.run(
@@ -990,7 +1132,12 @@ exports.toggleLike = async (req, res) => {
       await createNotification(
         session,
         ownerEmail,
-        "Someone liked your post ❤️"
+        "Someone liked your post ❤️",
+        { 
+          type: "like", 
+          projectId: projId ? (projId.toNumber ? projId.toNumber() : Number(projId)) : null,
+          requesterEmail: email 
+        }
       );
     }
 
@@ -1010,29 +1157,34 @@ exports.addComment = async (req, res) => {
   const { email, postId, text } = req.body;
 
   try {
-    // 🔥 Get post owner
+    // 🔥 Get post owner & Project ID
     const ownerRes = await session.run(
       `
       MATCH (owner:User)-[:POSTED]->(p:Post)
       WHERE id(p) = toInteger($postId)
-      RETURN owner.email AS ownerEmail
+      OPTIONAL MATCH (p)-[:FROM_PROJECT]->(proj:Project)
+      RETURN owner.email AS ownerEmail, id(proj) AS projId
       `,
       { postId }
     );
 
     const ownerEmail = ownerRes.records[0]?.get("ownerEmail");
+    const projId = ownerRes.records[0]?.get("projId");
 
-    // 🔥 Create comment
+    // 🔥 Create comment (MERGE to prevent double-submit)
     await session.run(
       `
       MATCH (u:User {email: $email})
       MATCH (p:Post)
       WHERE id(p) = toInteger($postId)
 
-      CREATE (c:Comment {
+      MERGE (c:Comment {
         text: $text,
-        createdAt: timestamp()
+        author: $email,
+        postId: $postId
       })
+      ON CREATE SET
+        c.createdAt = timestamp()
 
       MERGE (u)-[:COMMENTED]->(c)
       MERGE (c)-[:ON]->(p)
@@ -1045,7 +1197,12 @@ exports.addComment = async (req, res) => {
       await createNotification(
         session,
         ownerEmail,
-        "Someone commented on your post 💬"
+        "Someone commented on your post 💬",
+        { 
+          type: "comment", 
+          projectId: projId ? (projId.toNumber ? projId.toNumber() : Number(projId)) : null,
+          requesterEmail: email 
+        }
       );
     }
 

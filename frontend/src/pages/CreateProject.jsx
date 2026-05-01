@@ -89,78 +89,96 @@ function CreateProject() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-6 py-10 bg-gradient-to-br from-[#020617] via-[#020617] to-black text-white">
+    <div className="min-h-screen flex items-center justify-center px-4 sm:px-6 py-10 bg-gradient-to-br from-[#020617] via-[#020617] to-black text-white pt-24 pb-20">
 
-      <div className="glass w-full max-w-2xl p-8 fade-in">
+      <div className="glass w-full max-w-2xl p-6 sm:p-10 fade-in shadow-2xl relative overflow-hidden group">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/5 rounded-full -mr-32 -mt-32 blur-3xl group-hover:bg-indigo-500/10 transition-colors duration-500"></div>
         
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-3xl font-bold">Create Project</h1>
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 mb-12 relative z-10">
+          <div>
+            <h1 className="text-3xl sm:text-5xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white to-gray-400">Launch Project</h1>
+            <p className="text-gray-500 text-sm mt-2 font-medium">Turn your idea into a collaborative reality</p>
+          </div>
 
           <button
             onClick={() => navigate("/projects")}
-            className="btn-secondary"
+            className="group btn-secondary py-2 px-4 flex items-center gap-2"
           >
-            <ArrowLeftIcon className="w-4 h-4" />
-            Back
+            <ArrowLeftIcon className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+            <span className="text-sm font-bold uppercase tracking-widest">Back</span>
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-6">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-10 relative z-10">
 
           {/* TITLE */}
-          <div>
-            <label className="text-sm text-gray-400">Project Title</label>
+          <div className="space-y-3">
+            <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-indigo-400/80 flex items-center gap-2 ml-1">
+              <span className="w-4 h-px bg-indigo-500/40"></span>
+              Project Name
+            </label>
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="Enter project title"
-              className="w-full mt-1 p-3 rounded-lg bg-white/10 border border-white/20 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              placeholder="e.g. AI Portfolio Builder"
+              className="w-full p-5 rounded-2xl bg-white/5 border border-white/10 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:bg-white/10 transition-all text-lg font-semibold"
             />
           </div>
 
           {/* DESCRIPTION */}
-          <div>
-            <label className="text-sm text-gray-400">Description</label>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between ml-1">
+              <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-purple-400/80 flex items-center gap-2">
+                <span className="w-4 h-px bg-purple-500/40"></span>
+                Mission & Vision
+              </label>
+              <button
+                type="button"
+                onClick={handleGenerateDescription}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-500/10 border border-purple-500/20 text-[10px] font-bold text-purple-400 uppercase tracking-widest hover:bg-purple-500/20 transition-all active:scale-95"
+              >
+                <span>✨</span>
+                <span>AI Generate</span>
+              </button>
+            </div>
 
             <textarea
               ref={textareaRef}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Describe your project..."
+              placeholder="Describe your project goals, stack, and mission..."
               rows={4}
-              className="w-full mt-1 p-3 rounded-lg bg-white/10 border border-white/20 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none overflow-hidden transition-all duration-200"
+              className="w-full p-5 rounded-2xl bg-white/5 border border-white/10 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:bg-white/10 resize-none overflow-hidden transition-all leading-relaxed"
             />
-
-            <button
-              type="button"
-              onClick={handleGenerateDescription}
-              className="bg-purple-500 hover:bg-purple-600 px-4 py-2 rounded mt-3"
-            >
-              ✨ Generate Description with AI
-            </button>
           </div>
 
           {/* TEAM SIZE */}
-          <div>
-            <label className="text-sm text-gray-400">Team Size</label>
+          <div className="space-y-3">
+            <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-blue-400/80 flex items-center gap-2 ml-1">
+              <span className="w-4 h-px bg-blue-500/40"></span>
+              Team Scale
+            </label>
 
-            <input
-              type="number"
-              min="1"
-              value={teamSize}
-              onChange={(e) => setTeamSize(e.target.value)}
-              placeholder="Enter team size"
-              className="w-full mt-1 p-3 rounded-lg bg-white/10 border border-white/20 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-            />
+            <div className="relative group">
+              <input
+                type="number"
+                min="1"
+                value={teamSize}
+                onChange={(e) => setTeamSize(e.target.value)}
+                placeholder="Target member count"
+                className="w-full p-5 rounded-2xl bg-white/5 border border-white/10 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:bg-white/10 transition-all font-semibold"
+              />
+            </div>
           </div>
 
           {/* SKILLS */}
-          <div>
-            <label className="text-sm text-gray-400 mb-2 block">
-              Required Skills
+          <div className="space-y-6">
+            <label className="text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-400/80 flex items-center gap-2 ml-1">
+              <span className="w-4 h-px bg-emerald-500/40"></span>
+              Desired Expertise
             </label>
 
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-2 sm:gap-3">
               {skillOptions.map((skill) => {
                 const active = selectedSkills.includes(skill);
 
@@ -169,10 +187,10 @@ function CreateProject() {
                     type="button"
                     key={skill}
                     onClick={() => toggleSkill(skill)}
-                    className={`px-4 py-1.5 rounded-full text-sm border transition-all duration-300 ${
+                    className={`px-5 py-2.5 rounded-xl text-xs font-bold border transition-all duration-300 ${
                       active
-                        ? "bg-indigo-500 text-white border-indigo-400 shadow-md shadow-indigo-500/30 scale-105"
-                        : "bg-white/5 border-white/20 hover:bg-indigo-500/20"
+                        ? "bg-indigo-600 text-white border-indigo-400 shadow-xl shadow-indigo-600/30 scale-105"
+                        : "bg-white/5 border-white/10 hover:bg-white/10 text-gray-500 hover:text-gray-300"
                     }`}
                   >
                     {skill}
@@ -183,13 +201,16 @@ function CreateProject() {
           </div>
 
           {/* ACTION */}
-          <button
-            type="submit"
-            className="btn-primary w-full mt-4"
-          >
-            <PlusIcon className="w-5 h-5" />
-            Create Project
-          </button>
+          <div className="pt-6">
+            <button
+              type="submit"
+              className="btn-primary w-full py-5 text-xl font-bold shadow-2xl shadow-indigo-600/30 group overflow-hidden relative"
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+              <PlusIcon className="w-7 h-7 mr-2" />
+              Initialize Project
+            </button>
+          </div>
 
         </form>
       </div>

@@ -36,6 +36,7 @@ function Layout() {
         <Route path="/projects" element={<Projects />} />
         <Route path="/create-project" element={<CreateProject />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/profile/:email" element={<Profile />} />
         <Route path="/edit-profile" element={<EditProfile />} />
         <Route path="/edit-project/:id" element={<EditProject />} />
         <Route path="/project/:id" element={<ViewProject />} />

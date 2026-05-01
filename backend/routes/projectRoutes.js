@@ -15,6 +15,7 @@ router.get("/all", controller.getAllProjects);
 
 router.post("/kick", controller.kickMember);
 router.post("/leave", controller.leaveProject);
+router.post("/join-request/handle", controller.handleJoinRequest);
 
 router.post("/message", controller.sendMessage);
 router.get("/messages/:projectId", controller.getMessages);
