@@ -4,47 +4,72 @@ const axios = require("axios");
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
+// Helper for formatting DB errors cleanly
+const handleDbError = (err, res, prefix = "Database error") => {
+  console.error(`${prefix}:`, err);
+  if (
+    err.code === "ServiceUnavailable" ||
+    err.code === "SessionExpired" ||
+    err.message?.includes("RoutingTable") ||
+    err.message?.includes("discovery") ||
+    err.message?.includes("ENOTFOUND")
+  ) {
+    return res.status(503).json({
+      error: "Database service unavailable. Please check your Neo4j instance status.",
+      message: "Database service unavailable. Please check your Neo4j instance status."
+    });
+  }
+  return res.status(500).json({
+    error: err.message || "Internal server error",
+    message: err.message || "Internal server error"
+  });
+};
 
 // ================= REGISTER =================
 exports.register = async (req, res) => {
+  const { name, email, password } = req.body || {};
+
+  if (!name || !email || !password) {
+    return res.status(400).json({ error: "Name, email, and password are required", message: "Name, email, and password are required" });
+  }
+
+  const cleanEmail = email.trim().toLowerCase();
+  const cleanName = name.trim();
   const session = driver.session();
-  const { name, email, password } = req.body;
 
   try {
     // Check if user exists
     const existing = await session.run(
-      `MATCH (u:User {email: $email}) RETURN u`,
-      { email }
+      `MATCH (u:User {email: $cleanEmail}) RETURN u`,
+      { cleanEmail }
     );
 
     if (existing.records.length > 0) {
-      return res.status(400).json({ message: "User already exists" });
+      return res.status(400).json({ message: "User already exists", error: "User already exists" });
     }
 
     // Create user
     await session.run(
       `
       CREATE (u:User {
-        name: $name,
-        email: $email,
+        name: $cleanName,
+        email: $cleanEmail,
         password: $password
       })
       `,
-      { name, email, password }
+      { cleanName, cleanEmail, password }
     );
 
-    // 🔥 IMPORTANT FIX: don't send password back
     res.json({
       message: "User registered successfully",
       user: {
-        name,
-        email
+        name: cleanName,
+        email: cleanEmail
       }
     });
 
   } catch (err) {
-    console.error("REGISTER ERROR DETAILS:", err);   // 🔥 detailed debug
-    res.status(500).json({ error: err.message });
+    handleDbError(err, res, "REGISTER ERROR DETAILS");
   } finally {
     await session.close();
   }
@@ -53,25 +78,30 @@ exports.register = async (req, res) => {
 
 // ================= LOGIN =================
 exports.login = async (req, res) => {
+  const { email, password } = req.body || {};
+
+  if (!email || !password) {
+    return res.status(400).json({ message: "Email and password are required", error: "Email and password are required" });
+  }
+
+  const cleanEmail = email.trim().toLowerCase();
   const session = driver.session();
-  const { email, password } = req.body;
 
   try {
     const result = await session.run(
       `
-      MATCH (u:User {email: $email, password: $password})
+      MATCH (u:User {email: $cleanEmail, password: $password})
       RETURN u
       `,
-      { email, password }
+      { cleanEmail, password }
     );
 
     if (result.records.length === 0) {
-      return res.status(401).json({ message: "Invalid credentials" });
+      return res.status(401).json({ message: "Invalid credentials", error: "Invalid credentials" });
     }
 
     const user = result.records[0].get("u").properties;
 
-    // 🔥 IMPORTANT FIX: return only needed fields
     res.json({
       message: "Login successful",
       user: {
@@ -81,8 +111,7 @@ exports.login = async (req, res) => {
     });
 
   } catch (err) {
-    console.error("LOGIN ERROR DETAILS:", err);   // 🔥 detailed debug
-    res.status(500).json({ error: err.message });
+    handleDbError(err, res, "LOGIN ERROR DETAILS");
   } finally {
     await session.close();
   }
@@ -90,24 +119,41 @@ exports.login = async (req, res) => {
 
 // ================= GOOGLE LOGIN =================
 exports.googleLogin = async (req, res) => {
-  const session = driver.session();
-  const { token } = req.body;
+  const { token } = req.body || {};
+
+  if (!token) {
+    return res.status(400).json({ error: "Google token is required", message: "Google token is required" });
+  }
+
+  let name = "";
+  let email = "";
 
   try {
     const ticket = await client.verifyIdToken({
       idToken: token,
       audience: process.env.GOOGLE_CLIENT_ID,
     });
-    const { name, email } = ticket.getPayload();
+    const payload = ticket.getPayload() || {};
+    email = payload.email ? payload.email.trim().toLowerCase() : "";
+    name = payload.name ? payload.name.trim() : (email ? email.split("@")[0] : "Google User");
 
-    // Check if user exists
+    if (!email) {
+      return res.status(400).json({ error: "Could not retrieve email from Google token", message: "Could not retrieve email from Google token" });
+    }
+  } catch (err) {
+    console.error("GOOGLE TOKEN VERIFICATION ERROR:", err.message);
+    return res.status(400).json({ error: err.message || "Invalid Google token", message: err.message || "Invalid Google token" });
+  }
+
+  const session = driver.session();
+
+  try {
     const existing = await session.run(
       `MATCH (u:User {email: $email}) RETURN u`,
       { email }
     );
 
     if (existing.records.length === 0) {
-      // Create user if not exists
       await session.run(
         `
         CREATE (u:User {
@@ -118,6 +164,9 @@ exports.googleLogin = async (req, res) => {
         `,
         { name, email }
       );
+    } else {
+      const existingUser = existing.records[0].get("u").properties;
+      name = existingUser.name || name;
     }
 
     res.json({
@@ -126,8 +175,7 @@ exports.googleLogin = async (req, res) => {
     });
 
   } catch (err) {
-    console.error("GOOGLE LOGIN ERROR:", err);
-    res.status(400).json({ error: err.message || "Invalid Google token" });
+    handleDbError(err, res, "GOOGLE LOGIN DB ERROR");
   } finally {
     await session.close();
   }
@@ -135,8 +183,11 @@ exports.googleLogin = async (req, res) => {
 
 // ================= GITHUB LOGIN =================
 exports.githubLogin = async (req, res) => {
-  const session = driver.session();
-  const { code } = req.body;
+  const { code } = req.body || {};
+  if (!code) return res.status(400).json({ error: "Github auth code is required" });
+
+  let name = "";
+  let email = "";
 
   try {
     const tokenResponse = await axios.post(
@@ -159,9 +210,8 @@ exports.githubLogin = async (req, res) => {
       },
     });
     
-    // Email might be private, so fetch emails
-    let email = userResponse.data.email;
-    if (!email) {
+    let rawEmail = userResponse.data.email;
+    if (!rawEmail) {
       const emailResponse = await axios.get("https://api.github.com/user/emails", {
         headers: { 
           Authorization: `Bearer ${accessToken}`,
@@ -169,12 +219,20 @@ exports.githubLogin = async (req, res) => {
         },
       });
       const primaryEmail = emailResponse.data.find(e => e.primary);
-      email = primaryEmail ? primaryEmail.email : null;
+      rawEmail = primaryEmail ? primaryEmail.email : null;
     }
 
-    const name = userResponse.data.name || userResponse.data.login;
-    if (!email) return res.status(400).json({ error: "Could not retrieve Github email" });
+    name = userResponse.data.name || userResponse.data.login || "Github User";
+    if (!rawEmail) return res.status(400).json({ error: "Could not retrieve Github email" });
+    email = rawEmail.trim().toLowerCase();
+  } catch (err) {
+    console.error("GITHUB OAUTH ERROR:", err.response?.data || err.message);
+    return res.status(400).json({ error: err.response?.data || "Github login failed" });
+  }
 
+  const session = driver.session();
+
+  try {
     const existing = await session.run(`MATCH (u:User {email: $email}) RETURN u`, { email });
 
     if (existing.records.length === 0) {
@@ -182,12 +240,14 @@ exports.githubLogin = async (req, res) => {
         `CREATE (u:User { name: $name, email: $email, authProvider: "github" })`,
         { name, email }
       );
+    } else {
+      const existingUser = existing.records[0].get("u").properties;
+      name = existingUser.name || name;
     }
 
     res.json({ message: "Github Login successful", user: { name, email } });
   } catch (err) {
-    console.error("GITHUB LOGIN ERROR:", err.response?.data || err.message);
-    res.status(400).json({ error: err.response?.data || "Github login failed" });
+    handleDbError(err, res, "GITHUB LOGIN DB ERROR");
   } finally {
     await session.close();
   }
@@ -195,8 +255,11 @@ exports.githubLogin = async (req, res) => {
 
 // ================= LINKEDIN LOGIN =================
 exports.linkedinLogin = async (req, res) => {
-  const session = driver.session();
-  const { code, redirectUri } = req.body;
+  const { code, redirectUri } = req.body || {};
+  if (!code) return res.status(400).json({ error: "LinkedIn auth code is required" });
+
+  let name = "";
+  let email = "";
 
   try {
     const tokenParams = new URLSearchParams({
@@ -218,9 +281,18 @@ exports.linkedinLogin = async (req, res) => {
       headers: { Authorization: `Bearer ${accessToken}` }
     });
 
-    const { name, email } = userResponse.data;
-    if (!email) return res.status(400).json({ error: "Could not retrieve LinkedIn email" });
+    const rawEmail = userResponse.data.email;
+    name = userResponse.data.name || "LinkedIn User";
+    if (!rawEmail) return res.status(400).json({ error: "Could not retrieve LinkedIn email" });
+    email = rawEmail.trim().toLowerCase();
+  } catch (err) {
+    console.error("LINKEDIN OAUTH ERROR:", err.response?.data || err.message);
+    return res.status(400).json({ error: err.response?.data || "LinkedIn login failed" });
+  }
 
+  const session = driver.session();
+
+  try {
     const existing = await session.run(`MATCH (u:User {email: $email}) RETURN u`, { email });
 
     if (existing.records.length === 0) {
@@ -228,12 +300,14 @@ exports.linkedinLogin = async (req, res) => {
         `CREATE (u:User { name: $name, email: $email, authProvider: "linkedin" })`,
         { name, email }
       );
+    } else {
+      const existingUser = existing.records[0].get("u").properties;
+      name = existingUser.name || name;
     }
 
     res.json({ message: "LinkedIn Login successful", user: { name, email } });
   } catch (err) {
-    console.error("LINKEDIN LOGIN ERROR:", err.response?.data || err.message);
-    res.status(400).json({ error: err.response?.data || "LinkedIn login failed" });
+    handleDbError(err, res, "LINKEDIN LOGIN DB ERROR");
   } finally {
     await session.close();
   }

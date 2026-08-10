@@ -7,41 +7,57 @@ import {
   EnvelopeIcon,
   LockClosedIcon,
   ArrowRightIcon,
+  ExclamationCircleIcon
 } from "@heroicons/react/24/outline";
 
 function Register() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError("");
 
-    // ✅ Basic validation
-    if (!name || !email || !password) {
-      alert("Please fill all fields");
+    const cleanName = name.trim();
+    const cleanEmail = email.trim();
+
+    if (!cleanName || !cleanEmail || !password) {
+      setError("Please fill all fields");
       return;
     }
 
     try {
-      const res = await axios.post(
-        "/api/users/register",
-        { name, email, password }
-      );
+      setLoading(true);
+      const res = await axios.post("/api/users/register", {
+        name: cleanName,
+        email: cleanEmail,
+        password
+      });
 
-      localStorage.setItem("email", email);
-      localStorage.setItem("name", res.data.user.name);
+      if (res.data.user?.email) {
+        localStorage.setItem("email", res.data.user.email);
+      }
+      if (res.data.user?.name) {
+        localStorage.setItem("name", res.data.user.name);
+      }
+
       navigate("/dashboard");
-
     } catch (err) {
-      console.log(err);
-      alert(err.response?.data?.error || "Registration failed");
+      console.error(err);
+      setError(
+        err.response?.data?.error ||
+        err.response?.data?.message ||
+        "Registration failed"
+      );
+    } finally {
+      setLoading(false);
     }
   };
-
-  // Removed handleGoogleSuccess since AuthCallback handles it now
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 sm:px-6 py-10 bg-gradient-to-br from-[#020617] via-[#020617] to-black text-white pt-24">
@@ -52,12 +68,20 @@ function Register() {
         <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 blur-3xl rounded-full -mr-16 -mt-16"></div>
 
         {/* HEADER */}
-        <div className="text-center mb-10 relative z-10">
+        <div className="text-center mb-8 relative z-10">
           <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-2">Create Account</h2>
           <p className="text-gray-400 text-sm sm:text-base">
             Start collaborating with others
           </p>
         </div>
+
+        {/* ERROR BANNER */}
+        {error && (
+          <div className="mb-6 p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm flex items-center gap-3 relative z-10 animate-shake">
+            <ExclamationCircleIcon className="w-5 h-5 flex-shrink-0" />
+            <span>{error}</span>
+          </div>
+        )}
 
         {/* FORM */}
         <form onSubmit={handleSubmit} className="flex flex-col gap-6 relative z-10">
@@ -82,6 +106,7 @@ function Register() {
             <div className="relative group">
               <EnvelopeIcon className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-indigo-400 transition" />
               <input
+                type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="name@example.com"
@@ -108,10 +133,11 @@ function Register() {
           {/* SUBMIT */}
           <button
             type="submit"
-            className="btn-primary w-full py-4 mt-2 text-lg shadow-xl shadow-indigo-600/20"
+            disabled={loading}
+            className="btn-primary w-full py-4 mt-2 text-lg shadow-xl shadow-indigo-600/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
-            Get Started
-            <ArrowRightIcon className="w-5 h-5" />
+            {loading ? "Creating Account..." : "Get Started"}
+            {!loading && <ArrowRightIcon className="w-5 h-5" />}
           </button>
 
         </form>
@@ -129,10 +155,11 @@ function Register() {
             onClick={() => {
               const clientId = (import.meta.env.VITE_GOOGLE_CLIENT_ID || "").trim();
               if (!clientId || clientId === "your_google_client_id_here") {
-                alert("Please add VITE_GOOGLE_CLIENT_ID to .env");
+                setError("Please add VITE_GOOGLE_CLIENT_ID to .env");
                 return;
               }
-              window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${window.location.origin}/auth/callback&response_type=id_token&scope=email%20profile&state=google&nonce=random_nonce_value`;
+              const nonce = Math.random().toString(36).substring(2);
+              window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(window.location.origin + "/auth/callback")}&response_type=id_token&scope=openid%20email%20profile&state=google&nonce=${nonce}`;
             }}
             className="flex items-center justify-center gap-3 w-full py-3.5 bg-white text-black font-bold rounded-2xl hover:bg-gray-100 transition-all shadow-lg active:scale-[0.98]"
           >
@@ -145,10 +172,10 @@ function Register() {
               onClick={() => {
                 const clientId = (import.meta.env.VITE_GITHUB_CLIENT_ID || "").trim();
                 if (!clientId || clientId === "your_github_client_id_here") {
-                  alert("Please add VITE_GITHUB_CLIENT_ID to .env");
+                  setError("Please add VITE_GITHUB_CLIENT_ID to .env");
                   return;
                 }
-                window.location.href = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${window.location.origin}/auth/callback&state=github&scope=user:email`;
+                window.location.href = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(window.location.origin + "/auth/callback")}&state=github&scope=user:email`;
               }}
               className="flex items-center justify-center gap-2 py-3 bg-white/5 border border-white/10 rounded-2xl hover:bg-white/10 transition-all font-bold text-sm"
             >
@@ -159,10 +186,10 @@ function Register() {
               onClick={() => {
                 const clientId = (import.meta.env.VITE_LINKEDIN_CLIENT_ID || "").trim();
                 if (!clientId || clientId === "your_linkedin_client_id_here") {
-                  alert("Please add VITE_LINKEDIN_CLIENT_ID to .env");
+                  setError("Please add VITE_LINKEDIN_CLIENT_ID to .env");
                   return;
                 }
-                window.location.href = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${clientId}&redirect_uri=${window.location.origin}/auth/callback&state=linkedin&scope=openid%20profile%20email`;
+                window.location.href = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(window.location.origin + "/auth/callback")}&state=linkedin&scope=openid%20profile%20email`;
               }}
               className="flex items-center justify-center gap-2 py-3 bg-white/5 border border-white/10 rounded-2xl hover:bg-[#0a66c2] transition-all font-bold text-sm"
             >
